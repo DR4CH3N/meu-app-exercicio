@@ -1,31 +1,67 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
-  Button,
-  Image,
+  StyleSheet,
   Text,
-  SafeAreaView,
-  StatusBar,
   View,
   TextInput,
-  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  Image,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import MapView, { Marker } from "react-native-maps";
-import { Colors } from "react-native/Libraries/NewAppScreen";
 
 export default function ImagePickerExample() {
-  const [status, requestPermission] = ImagePicker.useCameraPermissions();
-  const [foto, setFoto] = useState();
-  const [titulo, onChangeText] = useState();
+  /* ===================================== MAPA E LOCALIZAÇÃO =========================================== */
 
-  const obterTitulo = useEffect(() => {
-    async function verificaPermissoes() {
-      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
-      requestPermission(cameraStatus === "granted");
+  const [minhaLocalizacao, setMinhaLocalizacao] = useState(null);
+
+  useEffect(() => {
+    async function obterLocalizacao() {
+      /* Acessandp o status da requisição de permissão de uso */
+      const { status } = await Location.requestForegroundPermissionsAsync();
+
+      /* Acessando os dados de geolocalização */
+      let localizacaoAtual = await Location.getCurrentPositionAsync({});
+
+      /* Adicionando os dados ao state */
+      setMinhaLocalizacao(localizacaoAtual);
     }
-    verificaPermissoes();
+
+    obterLocalizacao();
   }, []);
+
+  // console.log(minhaLocalizacao);
+
+  const regiaoInicial = {
+    // Estado de SP
+    latitude: -23.533773,
+    longitude: -46.65529,
+    latitudeDelta: 10,
+    longitudeDelta: 10,
+  };
+
+  /* Usando state para controlar a localização */
+  const [localizacaoClicada, setLocalizacaoClicada] = useState();
+
+  const marcarLocal = (event) => {
+    setLocalizacaoClicada({
+      latitudeDelta: 0.0922,
+      longitudeDelta: 0.0421,
+      latitude: minhaLocalizacao.coords.latitude,
+      longitude: minhaLocalizacao.coords.longitude,
+    });
+
+    setTimeout(() => {
+      console.log(localizacaoClicada);
+    }, 3000);
+  };
+
+  /* ===================================== FOTO =========================================== */
+
+  const [foto, setFoto] = useState(); // Recupera a foto que vc vai bater com a câmera
 
   const acessarCamera = async () => {
     const imagem = await ImagePicker.launchCameraAsync({
@@ -33,114 +69,150 @@ export default function ImagePickerExample() {
       aspect: [16, 9],
       quality: 0.5,
     });
+
     console.log(imagem);
+
     setFoto(imagem.assets[0].uri);
-  };
-
-  const [minhaLocalizacao, setMinhaLocalizacao] = useState(null);
-
-  useEffect(() => {
-    async function obterLocalizacao() {
-      const { status } = Location.requestForegroundPermissionsAsync();
-
-      let localizacaoAtual = await Location.getCurrentPositionAsync({});
-
-      setMinhaLocalizacao(localizacaoAtual);
-    }
-    obterLocalizacao();
-  }, []);
-  console.log(minhaLocalizacao);
-  const regiaoInicial = {
-    latitude: -23.533773,
-    longitude: -46.65529,
-    latitudeDelta: 10,
-    longitudeDelta: 10,
-  };
-
-  const [localizacao, setLocalizacao] = useState();
-
-  const marcarLocal = (event) => {
-    setLocalizacao({
-      latitudeDelta: 0.0922,
-      longitudeDelta: 0.0421,
-      latitude: minhaLocalizacao.coords.latitude,
-      longitude: minhaLocalizacao.coords.longitude,
-    });
-    console.log(localizacao);
   };
 
   return (
     <>
-      <StatusBar />
-      <SafeAreaView
-        style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-      >
-        <View style={estilos.titulo}>
-          <TextInput
-            style={estilos.input}
-            onChangeText={onChangeText}
-            value={titulo}
-            placeholder="Digite um título"
-            textAlign="center"
-          />
-        </View>
-        {foto && (
-          <Image source={{ uri: foto }} style={{ width: 300, height: 200 }} />
-        )}
-        <View style={estilos.botao}>
-          <Button title="Take a Photo" onPress={acessarCamera} color="black" />
-        </View>
+      <ScrollView contentContainerStyle={estilos.contentContainer}>
+        <SafeAreaView style={estilos.safeContainer}>
+          <Text style={estilos.tituloExercicio}>
+            App 1 - Fotos de lugares visitados
+          </Text>
 
-        <MapView
-          onPress={marcarLocal}
-          style={estilos.mapa}
-          region={localizacao ?? regiaoInicial}
-          liteMode={false}
-          mapType="hybrid"
-        >
-          {localizacao && (
-            <Marker
-              coordinate={localizacao}
-              title="Aqui !"
-              onPress={(e) => console.log(e.nativeEvent)}
+          <View style={estilos.containerNomeLocal}>
+            <TextInput
+              style={estilos.campoLocal}
+              placeholder="Titulo da foto/local"
             />
+          </View>
+
+          <View style={estilos.foto}>
+            {foto && (
+              <Image
+                source={{ uri: foto }}
+                style={{ width: 371, height: 200 }}
+              />
+            )}
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [
+              {
+                backgroundColor: pressed ? "gray" : "#f4f4f4",
+              },
+              estilos.botaoFoto,
+            ]}
+            onPress={acessarCamera}
+          >
+            <Text style={estilos.textoBotaoFoto}>Tirar Foto</Text>
+          </Pressable>
+
+          <View style={estilos.mapa}>
+            <MapView
+              style={{ height: 200 }}
+              region={localizacaoClicada ?? regiaoInicial}
+              liteMode={false}
+              mapType="standard"
+              userInterfaceStyle="dark"
+              onPress={marcarLocal}
+            >
+              {localizacaoClicada && (
+                <Marker
+                  coordinate={localizacaoClicada}
+                  title="Sua localização!!!"
+                  onPress={(e) => console.log(e.nativeEvent)}
+                />
+              )}
+            </MapView>
+          </View>
+
+          {minhaLocalizacao && (
+            <Pressable
+              style={({ pressed }) => [
+                {
+                  backgroundColor: pressed ? "gray" : "#f4f4f4",
+                },
+                estilos.botaoLocalizar,
+              ]}
+              onPress={marcarLocal}
+            >
+              <Text style={estilos.textoLocalizar}>Salvar localização</Text>
+            </Pressable>
           )}
-        </MapView>
-        <View style={estilos.botao}>
-          <Button
-            title="Find my Location"
-            onPress={marcarLocal}
-            color="black"
-          />
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </ScrollView>
     </>
   );
 }
 
 const estilos = StyleSheet.create({
-  botao: {
-    margin: 8,
-    borderWidth: "2px",
-    borderRadius: "3px",
-    backgroundColor: "#63F893",
+  contentContainer: {
+    paddingVertical: 1,
+    // flex: 1,
+  },
+  safeContainer: {
+    // flex: 1,
+    backgroundColor: "#f4f4f4",
+    padding: 8,
+  },
+  tituloExercicio: {
+    fontSize: 20,
+    textAlign: "center",
+    marginTop: 50,
+  },
+  campoLocal: {
+    borderWidth: 1,
+    fontSize: 18,
+    marginTop: 25,
+    height: 54,
+    width: "90%",
+    textAlign: "center", // Deixa o placheholder centralizado
+  },
+  containerNomeLocal: {
+    alignItems: "center",
+  },
+  foto: {
+    marginTop: 20,
+    width: "80%",
+    height: 200,
+    backgroundColor: "lightblue",
+    justifyContent: "center",
+    // marginLeft: 20,
+  },
+  botaoFoto: {
+    marginTop: 20,
+    borderWidth: 1,
+    height: 54,
+    width: "90%",
+    marginLeft: 20,
+  },
+  textoBotaoFoto: {
+    fontSize: 20,
+    alignSelf: "center",
+    marginTop: 10,
   },
   mapa: {
-    width: 300,
-    height: 250,
+    marginTop: 20,
+    width: "90%",
+    height: 200,
+    backgroundColor: "lightblue",
+    justifyContent: "center",
+    marginLeft: 20,
   },
-  container: {
-    flex: 1,
+  botaoLocalizar: {
+    marginTop: 20,
+    borderWidth: 1,
+    height: 54,
+    width: "90%",
+    marginLeft: 20,
   },
-
-  titulo: {
-    margin: 5,
-    borderWidth: "2px",
-    borderRadius: "4px",
-    width: 300,
-    borderColor: "#63BAF8",
-  },
-  input: {
-    fontSize: 22,
+  textoLocalizar: {
+    fontSize: 20,
+    alignSelf: "center",
+    marginTop: 10,
   },
 });
